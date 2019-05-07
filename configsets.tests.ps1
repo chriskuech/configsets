@@ -37,40 +37,61 @@ Describe "Merge-Object" {
 
   Context "Given an 'Override' merge strategy" {
     It "Should merge arrays without duplicates" {
-      $merged = $arraysWithoutDuplicates | Merge-Object -Strategy Override
-      $merged | Should -HaveCount $arraysWithoutDuplicatesMerged.Count
+      $merged = (1..5), (6..10) | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [int]
+      $merged | Should -HaveCount 10
     }
     It "Should merge arrays with duplicates" {
-      $merged = $arraysWithDuplicates | Merge-Object -Strategy Override
-      $merged | Should -HaveCount $arraysWithDuplicatesMerged.Count
+      $merged = (1..7), (4..12) | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [int]
+      $merged | Should -HaveCount 12
+    }
+    It "Should merge hashtables without duplicates" {
+      $merged = @{ a = 1 }, @{ b = 2 } `
+      | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [hashtable]
+      $merged.Keys | Should -HaveCount 2
+    }
+    It "Should merge hashtables with duplicates" {
+      $merged = @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
+      | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [hashtable]
+      $merged.Keys | Should -HaveCount 3
+      $merged["b"] | Should -Be 3
     }
     It "Should merge objects without duplicates" {
-      $merged = $objectsWithoutDuplicates | Merge-Object -Strategy Override
-      $merged | Should -Be $objectsWithoutDuplicatesMerged
+      $merged = @{ a = 1 }, @{ b = 2 } `
+      | % { [PSCustomObject]$_ } `
+      | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [PSCustomObject]
+      $merged.psobject.Properties | Should -HaveCount 2
     }
     It "Should merge objects with duplicates" {
-      $merged = $objectsWithDuplicates | Merge-Object -Strategy Override
-      $merged | Should -Be $objectsWithDuplicatesMerged
+      $merged = @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
+      | % { [PSCustomObject]$_ } `
+      | Merge-Object -Strategy Override
+      $merged | Should -BeOfType [PSCustomObject]
+      $merged.psobject.Properties | Should -HaveCount 3
+      $merged.b | Should -Be 3
     }
     It "Should override inequal values" {
-      $merged = $inequalValues | Merge-Object -Strategy Override
-      $merged | Should -Be $inequalValuesMerged
+      $merged = "cat", 42 | Merge-Object -Strategy Override
+      $merged | Should -Be 42
     }
     It "Should override equal values" {
-      $merged = $equalValues | Merge-Object -Strategy Override
-      $merged | Should -Be $equalValuesMerged
+      $merged = "cat", "cat" | Merge-Object -Strategy Override
+      $merged | Should -Be "cat"
     }
   }
 
-  Context "Given a 'Fail' merge strategy" {
+  Context "Given a 'Fail' merge strategy" -Skip {
     It "Should merge arrays without duplicates" {
       $arraysWithoutDuplicates `
       | Merge-Object -Strategy Fail `
       | Should -Be $arraysWithoutDuplicatesMerged
     }
     It "Should fail to merge arrays with duplicates" {
-      $arraysWithDuplicates `
-      | Merge-Object -Strategy Fail `
+      { $arraysWithDuplicates | Merge-Object -Strategy Fail } `
       | Should -Throw
     }
     It "Should merge objects without duplicates" {
@@ -79,8 +100,7 @@ Describe "Merge-Object" {
       | Should -Be $objectsWithoutDuplicatesMerged
     }
     It "Should fail to merge objects with duplicates" {
-      $objectsWithDuplicates `
-      | Merge-Object -Strategy Fail `
+      { $objectsWithDuplicates | Merge-Object -Strategy Fail } `
       | Should -Throw
     }
     It "Should fail to merge inequal values" {

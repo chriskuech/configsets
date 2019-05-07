@@ -82,32 +82,56 @@ enum MergeStrategy {
   Fail
 }
 
-function merge($a, $b, $strategy) {
-  Write-host "a $a : $($a.GetType()), b $b : $($b.GetType())"
-  if ($a -is [psobject] -and $b -is [psobject]) { 
+function getType($v) {
+  if ($null -eq $v) { "null" } else { $v.GetType() }
+}
+
+function merge($a, $b, [scriptblock]$strategy) {
+  Write-Debug "a is pscustomobject: $($a -is [pscustomobject])"
+  Write-Debug "merge $a`: $(getType $a), $b`: $(getType $b)"
+  if ($null -eq $a) {
+    Write-Debug "new assignment '$b'"
+    return $b
+  }
+  if ($a -eq $b -or $null -eq $b) {
+    Write-Debug "existing assignment '$a'"
+    return $a
+  }
+  if ($a -is [array] -and $b -is [array]) {
+    Write-Debug "merge arrays '$a' '$b'"
+    return $a + $b | Sort -Unique
+  }
+  if ($a -is [hashtable] -and $b -is [hashtable]) {
+    Write-Debug "merge hashtable '$a' '$b'"
     $merged = @{ }
-    $props = $a.psobject.Properties.Name + $b.psobject.Properties.Name
-    $a.psobject.Properties.Name + $b.psobject.Properties.Name `
+    $a.Keys + $b.Keys `
+    | Sort -Unique `
+    | % { $merged[$_] = merge $a[$_] $b[$_] $strategy }
+    return $merged
+  }
+  if ($a -is [pscustomobject] -and $b -is [pscustomobject]) {
+    Write-Debug "a is pscustomobject: $($a -is [pscustomobject])"
+    Write-Debug "merge objects '$a' '$b'"
+    Write-Debug "merge objects $(getType $a) $(getType $b)"
+    $merged = @{ }
+    $a.psobject.Properties + $b.psobject.Properties `
+    | % Name `
     | Sort -Unique `
     | % { $merged[$_] = merge $a.$_ $b.$_ $strategy }
     return [PSCustomObject]$merged
   }
-  if ($a -is [array] -and $b -is [array]) {
-    return $a + $b | Sort -Unique
-  }
-  return &$strategy $a $b
+  Write-Debug "resolve conflict '$a' '$b'"
+  return &$strategy $a $b 
 }
 
-$strategyFn = @{
+$Strategies = @{
   Override = {
     Param($a, $b)
-    @{ $true = $a; $false = $b }[$null -eq $b]
+    return $b
   }
   Fail     = {
     Param($a, $b)
-    $err = "Cannot merge type '$($a.GetType())' and '$($b.GetType())'"
-    $lazy = @{ $true = { $a }; $false = { throw $err } }[$null -eq $b -or $a -eq $b]
-    &$lazy
+    throw "Cannot merge type '$($a.GetType())' and '$($b.GetType())'"
   }
 }
 
@@ -131,7 +155,7 @@ function Merge-Object {
   Param(
     [Parameter(Mandatory, ValueFromPipeline)]
     [ValidateNotNullOrEmpty()]
-    [array] $Configs,
+    [object[]] $Configs,
     [Parameter(Mandatory)]
     [ValidateNotNullOrEmpty()]
     [MergeStrategy] $Strategy
@@ -139,7 +163,8 @@ function Merge-Object {
   
   $accum = $input | Select -First 1
   foreach ($config in $input | Select -Skip 1) {
-    $accum = merge $accum $config $strategyFn[$Strategy]
+    Write-Debug "accum is pscustomobject: $($accum -is [pscustomobject])"
+    $accum = merge $accum $config $Strategies["$Strategy"]
   }
   return $accum
 }
