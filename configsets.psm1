@@ -1,4 +1,6 @@
 
+using namespace Newtonsoft.Json.Schema
+
 # I like the Windows PowerShell alias
 if (-not (Get-Alias "Sort" -ErrorAction SilentlyContinue)) {
   New-Alias -Name Sort -Value Sort-Object
