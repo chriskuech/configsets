@@ -109,8 +109,10 @@ function merge($a, $b, [scriptblock]$strategy) {
     | % { $merged[$_] = merge $a[$_] $b[$_] $strategy }
     return $merged
   }
-  if ($a -is [pscustomobject] -and $b -is [pscustomobject]) {
-    Write-Debug "a is pscustomobject: $($a -is [pscustomobject])"
+  # don't use `-is [PSObject]`
+  # https://github.com/PowerShell/PowerShell/issues/9557
+  if ($a -isnot [ValueType] -and $b -isnot [ValueType]) {
+    Write-Debug "a is pscustomobject: $($a -is [psobject])"
     Write-Debug "merge objects '$a' '$b'"
     Write-Debug "merge objects $(getType $a) $(getType $b)"
     $merged = @{ }
