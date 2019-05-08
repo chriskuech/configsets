@@ -3,8 +3,8 @@ Import-Module $PSScriptRoot -Force
 
 Describe "Assert-HomogenousConfig" {
 
-  $NonHomogenousConfigContainer = "$PSScriptRoot\test\non-homogenous"
-  $HomogenousConfigContainer = "$PSScriptRoot\test\homogenous"
+  $NonHomogenousConfigContainer = "$PSScriptRoot\test\bad"
+  $HomogenousConfigContainer = "$PSScriptRoot\test\good"
 
   Context "Given non-homogenous configs" {
     It "Should throw" {
@@ -20,20 +20,26 @@ Describe "Assert-HomogenousConfig" {
 
 }
 
-Describe "Merge-Object" {
+Describe "Assert-ParseableJson" {
 
-  $arraysWithoutDuplicates = (1..5), (6..10)
-  $arraysWithoutDuplicatesMerged = 1..10
-  $arraysWithDuplicates = (1..7), (4..12)
-  $arraysWithDuplicatesMerged = 1..12
-  $objectsWithoutDuplicates = [PSCustomObject]@{ a = 1 }, [PSCustomObject]@{ b = 2 }
-  $objectsWithoutDuplicatesMerged = [PSCustomObject]@{a = 1; b = 2 }
-  $objectsWithDuplicates = [PSCustomObject]@{ a = 1; b = 2 }, [PSCustomObject]@{ b = 3; c = 4 }
-  $objectsWithDuplicatesMerged = [PSCustomObject]@{ a = 1; b = 3; c = 4 }
-  $inequalValues = "cat", 14
-  $inequalValuesMerged = 14
-  $equalValues = "bear", "bear"
-  $equalValuesMerged = "bear"
+  $InvalidJsonContainer = "$PSScriptRoot\test\bad"
+  $ValidJsonContainer = "$PSScriptRoot\test\good"
+  
+  Context "Given invalid JSONs" {
+    It "Should throw" {
+      { Assert-ParseableJson $InvalidJsonContainer } | Should -Throw
+    }
+  }
+
+  Context "Given valid JSONs" {
+    It "Should not throw" {
+      { Assert-ParseableJson $ValidJsonContainer } | Should -Not -Throw
+    }
+  }
+
+}
+
+Describe "Merge-Object" {
 
   Context "Given an 'Override' merge strategy" {
     It "Should merge arrays without duplicates" {

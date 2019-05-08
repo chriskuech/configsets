@@ -1,20 +1,17 @@
 
-New-Alias -Name Sort -Value Sort-Object
+# I like the Windows PowerShell alias
+if (-not (Get-Alias "Sort" -ErrorAction SilentlyContinue)) {
+  New-Alias -Name Sort -Value Sort-Object
+}
 
 <#
 .SYNOPSIS
-  Short description
+  Asserts whether the configs in Container are homogenous
 .DESCRIPTION
-  Long description
-.EXAMPLE
-  PS C:\> <example usage>
-  Explanation of what the example does
-.INPUTS
-  Inputs (if any)
-.OUTPUTS
-  Output (if any)
+  Throws an error if the files in Container do not share an idententical number of dash-delimeted Types
+  (ex: type1-type2-type3 has 3 types) and identical full file extension (ex: .params.json)
 .NOTES
-  General notes
+  Call this function in a PR build to ensure your configs in Container are all valid
 #>
 function Assert-HomogenousConfig {
   Param(
@@ -35,6 +32,30 @@ function Assert-HomogenousConfig {
   if ($extensions.Count -ne 1) {
     $extString = ($extensions.Name | Sort | % { "'$_'" }) -join ", "
     throw "Found multiple different extensions: $extString"
+  }
+}
+
+<#
+.SYNOPSIS
+  Assert whether the configs in Container are all valid JSON
+.DESCRIPTION
+  Reads each file in Container and throws an error if any cannot be parsed as JSON
+.NOTES
+  Call this function in a PR build to ensure your configs in Container are all valid
+#>
+function Assert-ParseableJson {
+  Param(
+    # Path to the folder containing the configs
+    [Parameter(Mandatory)]
+    [ValidateScript( { Test-Path $_ -PathType Container } )]
+    [string] $Container
+  )
+
+  $invalidJsons = Get-ChildItem $Container `
+  | ? { -not (Get-Content $_ -Raw | ConvertFrom-Json -ErrorAction SilentlyContinue) } `
+  | % Name
+  if ($invalidJsons) {
+    throw "Found invalid JSONs:`n$invalidJsons"
   }
 }
 
@@ -87,8 +108,6 @@ function getType($v) {
 }
 
 function merge($a, $b, [scriptblock]$strategy) {
-  Write-Debug "a is pscustomobject: $($a -is [pscustomobject])"
-  Write-Debug "merge $a`: $(getType $a), $b`: $(getType $b)"
   if ($null -eq $a) {
     Write-Debug "new assignment '$b'"
     return $b
