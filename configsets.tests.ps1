@@ -20,24 +20,37 @@ Describe "Assert-HomogenousConfig" {
 
 }
 
-Describe "Assert-ParseableJson" {
 
-  $InvalidJsonContainer = "$PSScriptRoot\test\bad"
-  $ValidJsonContainer = "$PSScriptRoot\test\good"
-  
-  Context "Given invalid JSONs" {
-    It "Should throw" {
-      { Assert-ParseableJson $InvalidJsonContainer } | Should -Throw
-    }
-  }
+Describe "Assert-ValidJson" {
 
-  Context "Given valid JSONs" {
+  $goodParamsPath = "$PSScriptRoot\test\good.params.json"
+  $badParamsPath = "$PSScriptRoot\test\bad.params.json"
+
+  Context "Given a valid parameters file path" {
     It "Should not throw" {
-      { Assert-ParseableJson $ValidJsonContainer } | Should -Not -Throw
+      { Assert-ValidJson -Path $goodParamsPath } | Should -Not -Throw
     }
   }
-
 }
+
+# Describe "Assert-ParseableJson" {
+
+#   $InvalidJsonContainer = "$PSScriptRoot\test\bad"
+#   $ValidJsonContainer = "$PSScriptRoot\test\good"
+  
+#   Context "Given invalid JSONs" {
+#     It "Should throw" {
+#       { Assert-ParseableJson $InvalidJsonContainer } | Should -Throw
+#     }
+#   }
+
+#   Context "Given valid JSONs" {
+#     It "Should not throw" {
+#       { Assert-ParseableJson $ValidJsonContainer } | Should -Not -Throw
+#     }
+#   }
+
+# }
 
 Describe "Merge-Object" {
 
@@ -79,6 +92,10 @@ Describe "Merge-Object" {
       $merged | Should -BeOfType [PSCustomObject]
       $merged.psobject.Properties | Should -HaveCount 3
       $merged.b | Should -Be 3
+    }
+    It "Should override inequal strings" {
+      $merged = "joe", "estevez" | Merge-Object -Strategy Override
+      $merged | Should -Be "estevez"
     }
     It "Should override inequal values" {
       $merged = "cat", 42 | Merge-Object -Strategy Override
@@ -126,6 +143,10 @@ Describe "Merge-Object" {
         | % { [PSCustomObject]$_ } `
         | Merge-Object -Strategy Fail
       } | Should -Throw
+    }
+    It "Should fail to merge inequal strings" {
+      { "joe", "estevez" | Merge-Object -Strategy Fail } `
+      | Should -Throw
     }
     It "Should fail to merge inequal values" {
       { "cat", 42 | Merge-Object -Strategy Fail } `

@@ -1,5 +1,7 @@
 
+#requires -psedition core
 using namespace Newtonsoft.Json.Schema
+$ErrorActionPreference = "Stop"
 
 # I like the Windows PowerShell alias
 if (-not (Get-Alias "Sort" -ErrorAction SilentlyContinue)) {
@@ -34,6 +36,41 @@ function Assert-HomogenousConfig {
   if ($extensions.Count -ne 1) {
     $extString = ($extensions.Name | Sort | % { "'$_'" }) -join ", "
     throw "Found multiple different extensions: $extString"
+  }
+}
+
+function Assert-ValidJson {
+  Param(
+    # Path to the JSON file or container of JSON files
+    [Parameter(Mandatory)]
+    [ValidateScript( { Test-Path $_ } )]
+    [string]$Path
+  )
+
+  $errors += @()
+
+  foreach ($jsonPath in Get-ChildItem $Path -Filter "*.json") {
+    $json = Get-Content $jsonPath -Raw
+
+    # test parseable
+    if (-not ($json | Test-Json)) {
+      $errors += [PSCustomObject]@{ Error = "Parse failure"; Path = $jsonPath }
+      continue
+    }
+
+    # test schema
+    $obj = $json | ConvertFrom-Json
+    if ($obj.'$schema') {
+      # get schema
+      $schema = Invoke-WebRequest ($obj.'$schema' -replace "#.*")
+      if (-not ($json | Test-Json -Schema $schema)) {
+        $errors += [PSCustomObject]@{ Error = "Schema failure"; Path = $jsonPath }
+      }
+    }
+  }
+
+  if ($errors) {
+    throw "Invalid JSONs: $errors"
   }
 }
 
@@ -81,7 +118,7 @@ function Select-Config {
   Param(
     # String identifier for the set
     [Parameter(Mandatory, ParameterSetName = "Id")]
-    [ValidatePattern("^[^-]+(-[^-]+)*$")]
+    [ValidatePattern("^[^-]+( - [^-]+)*$")]
     [string] $Id,
     # 
     [Parameter(Mandatory, ParameterSetName = "Vector")]
@@ -105,8 +142,10 @@ enum MergeStrategy {
   Fail
 }
 
-function getType($v) {
-  if ($null -eq $v) { "null" } else { $v.GetType() }
+# don't use `-is [PSCustomObject]`
+# https://github.com/PowerShell/PowerShell/issues/9557
+function isPsCustomObject($v) {
+  $v.PSTypeNames -contains 'System.Management.Automation.PSCustomObject'
 }
 
 function merge($a, $b, [scriptblock]$strategy) {
@@ -130,12 +169,9 @@ function merge($a, $b, [scriptblock]$strategy) {
     | % { $merged[$_] = merge $a[$_] $b[$_] $strategy }
     return $merged
   }
-  # don't use `-is [PSObject]`
-  # https://github.com/PowerShell/PowerShell/issues/9557
-  if ($a -isnot [ValueType] -and $b -isnot [ValueType]) {
+  if ((isPsCustomObject $a) -and (isPsCustomObject $b)) {
     Write-Debug "a is pscustomobject: $($a -is [psobject])"
     Write-Debug "merge objects '$a' '$b'"
-    Write-Debug "merge objects $(getType $a) $(getType $b)"
     $merged = @{ }
     $a.psobject.Properties + $b.psobject.Properties `
     | % Name `
