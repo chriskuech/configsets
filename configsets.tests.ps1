@@ -80,6 +80,10 @@ Describe "Merge-Object" {
       $merged.psobject.Properties | Should -HaveCount 3
       $merged.b | Should -Be 3
     }
+    It "Should override inequal strings" {
+      $merged = "joe", "estevez" | Merge-Object -Strategy Override
+      $merged | Should -Be "estevez"
+    }
     It "Should override inequal values" {
       $merged = "cat", 42 | Merge-Object -Strategy Override
       $merged | Should -Be 42
@@ -126,6 +130,10 @@ Describe "Merge-Object" {
         | % { [PSCustomObject]$_ } `
         | Merge-Object -Strategy Fail
       } | Should -Throw
+    }
+    It "Should fail to merge inequal strings" {
+      { "joe", "estevez" | Merge-Object -Strategy Fail } `
+      | Should -Throw
     }
     It "Should fail to merge inequal values" {
       { "cat", 42 | Merge-Object -Strategy Fail } `
