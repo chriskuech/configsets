@@ -24,7 +24,7 @@ Describe "Assert-ParseableJson" {
 
   $InvalidJsonContainer = "$PSScriptRoot\test\bad"
   $ValidJsonContainer = "$PSScriptRoot\test\good"
-  
+
   Context "Given invalid JSONs" {
     It "Should throw" {
       { Assert-ParseableJson $InvalidJsonContainer } | Should -Throw
@@ -40,9 +40,9 @@ Describe "Assert-ParseableJson" {
 }
 
 Describe "Select-Config" {
-  
+
   $container = "$PSScriptRoot\test\many"
-  
+
   Context "Given an ID" {
     It "Should select all configs that match the selector with wildcards" {
       $selector = "a-_-c"
@@ -62,7 +62,7 @@ Describe "Select-Config" {
       $found | Should -BeNullOrEmpty
     }
   }
-  
+
   Context "Given a Vector" {
     It "Should select all configs that match the selector with wildcards" {
       $selector = @("a", "_", "c")
@@ -82,5 +82,5 @@ Describe "Select-Config" {
       $found | Should -BeNullOrEmpty
     }
   }
-  
+
 }

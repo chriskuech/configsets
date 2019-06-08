@@ -91,11 +91,12 @@ function Select-Config {
     [ValidateScript( { Test-Path $_ -PathType Container } )]
     [string] $Container
   )
-  
+
   if (-not $Id) {
     $Id = $Vector -join "-"
   }
 
   $globPattern = $Id -replace "_", "*"
-  Get-ChildItem $Container | ? { $_.BaseName -replace "_", "*" -like $globPattern }
+  Get-ChildItem $Container `
+  | ? { $_.BaseName -replace "_", "*" -like $globPattern }
 }
