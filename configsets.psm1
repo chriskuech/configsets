@@ -29,7 +29,7 @@ function Assert-HomogenousConfig {
   $configs = Get-ChildItem $Container
   $dimensions = @($configs | Group { ($_.Name -replace "\..+$" -split "-").Count })
   $extensions = @($configs | Group { $_.Name -replace "^[^.]+" })
-  
+
   if ($dimensions.Count -ne 1) {
     $dimString = ($dimensions.Name | Sort | % { "'$_'" }) -join ", "
     throw "Configs vary in number of dimensions. Found: $dimString"
@@ -96,7 +96,6 @@ function Select-Config {
     $Id = $Vector -join "-"
   }
 
-  $globPattern = $Id -replace "_", "*"
-  Get-ChildItem $Container `
-  | ? { $_.BaseName -replace "_", "*" -like $globPattern }
+  $pattern = "$($Id -replace "_", "*").*"
+  Get-ChildItem $Container -Filter $pattern
 }

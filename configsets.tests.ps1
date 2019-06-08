@@ -70,7 +70,7 @@ Describe "Select-Config" {
       $expected = "a-_-c", "a-b-_", "a-b-c"
       @($found), @($expected) | Test-Equality | Should -BeTrue
     }
-    It "Should select a single config with non-wildcard selector" {
+    It "Should select all configs with non-wildcard selector" {
       $selector = @("a", "b", "c")
       $found = Select-Config -Vector $selector -Container $container | % BaseName
       $expected = "a-_-c", "a-b-_", "a-b-c"
