@@ -39,110 +39,48 @@ Describe "Assert-ParseableJson" {
 
 }
 
-Describe "Merge-Object" {
-
-  Context "Given an 'Override' merge strategy" {
-    It "Should merge arrays without duplicates" {
-      $merged = (1..5), (6..10) | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [int]
-      $merged | Should -HaveCount 10
+Describe "Select-Config" {
+  
+  $container = "$PSScriptRoot\test\many"
+  
+  Context "Given an ID" {
+    It "Should select all configs that match the selector with wildcards" {
+      $selector = "a-_-c"
+      $found = Select-Config -Id $selector -Container $container | % BaseName
+      $expected = "a-_-c", "a-b-_", "a-b-c"
+      @($found), @($expected) | Test-Equality | Should -BeTrue
     }
-    It "Should merge arrays with duplicates" {
-      $merged = (1..7), (4..12) | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [int]
-      $merged | Should -HaveCount 12
+    It "Should select a single config with non-wildcard selector" {
+      $selector = "a-b-c"
+      $found = Select-Config -Id $selector -Container $container | % BaseName
+      $expected = "a-_-c", "a-b-_", "a-b-c"
+      @($found), @($expected) | Test-Equality | Should -BeTrue
     }
-    It "Should merge hashtables without duplicates" {
-      $merged = @{ a = 1 }, @{ b = 2 } `
-      | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [hashtable]
-      $merged.Keys | Should -HaveCount 2
-    }
-    It "Should merge hashtables with duplicates" {
-      $merged = @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
-      | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [hashtable]
-      $merged.Keys | Should -HaveCount 3
-      $merged["b"] | Should -Be 3
-    }
-    It "Should merge objects without duplicates" {
-      $merged = @{ a = 1 }, @{ b = 2 } `
-      | % { [PSCustomObject]$_ } `
-      | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [PSCustomObject]
-      $merged.psobject.Properties | Should -HaveCount 2
-    }
-    It "Should merge objects with duplicates" {
-      $merged = @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
-      | % { [PSCustomObject]$_ } `
-      | Merge-Object -Strategy Override
-      $merged | Should -BeOfType [PSCustomObject]
-      $merged.psobject.Properties | Should -HaveCount 3
-      $merged.b | Should -Be 3
-    }
-    It "Should override inequal strings" {
-      $merged = "joe", "estevez" | Merge-Object -Strategy Override
-      $merged | Should -Be "estevez"
-    }
-    It "Should override inequal values" {
-      $merged = "cat", 42 | Merge-Object -Strategy Override
-      $merged | Should -Be 42
-    }
-    It "Should override equal values" {
-      $merged = "cat", "cat" | Merge-Object -Strategy Override
-      $merged | Should -Be "cat"
+    It "Should fail to select a non-existent config" {
+      $selector = "x-y-z"
+      $found = Select-Config -Id $selector -Container $container | % BaseName
+      $found | Should -BeNullOrEmpty
     }
   }
-
-  Context "Given a 'Fail' merge strategy" {
-    It "Should merge arrays without duplicates" {
-      $merged = (1..5), (6..10) | Merge-Object -Strategy Fail
-      $merged | Should -BeOfType [int]
-      $merged | Should -HaveCount 10
+  
+  Context "Given a Vector" {
+    It "Should select all configs that match the selector with wildcards" {
+      $selector = @("a", "_", "c")
+      $found = Select-Config -Vector $selector -Container $container | % BaseName
+      $expected = "a-_-c", "a-b-_", "a-b-c"
+      @($found), @($expected) | Test-Equality | Should -BeTrue
     }
-    It "Should merge arrays with duplicates" {
-      $merged = (1..7), (4..12) | Merge-Object -Strategy Fail
-      $merged | Should -BeOfType [int]
-      $merged | Should -HaveCount 12
+    It "Should select a single config with non-wildcard selector" {
+      $selector = @("a", "b", "c")
+      $found = Select-Config -Vector $selector -Container $container | % BaseName
+      $expected = "a-_-c", "a-b-_", "a-b-c"
+      @($found), @($expected) | Test-Equality | Should -BeTrue
     }
-    It "Should merge hashtables without duplicates" {
-      $merged = @{ a = 1 }, @{ b = 2 } `
-      | Merge-Object -Strategy Fail
-      $merged | Should -BeOfType [hashtable]
-      $merged.Keys | Should -HaveCount 2
-    }
-    It "Should fail to merge hashtables with duplicates" {
-      {
-        @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
-        | Merge-Object -Strategy Fail
-      } | Should -Throw
-    }
-    It "Should merge objects without duplicates" {
-      $merged = @{ a = 1 }, @{ b = 2 } `
-      | % { [PSCustomObject]$_ } `
-      | Merge-Object -Strategy Fail
-      $merged | Should -BeOfType [PSCustomObject]
-      $merged.psobject.Properties | Should -HaveCount 2
-    }
-    It "Should fail to merge objects with duplicates" {
-      {
-        @{ a = 1; b = 2 }, @{ b = 3; c = 4 } `
-        | % { [PSCustomObject]$_ } `
-        | Merge-Object -Strategy Fail
-      } | Should -Throw
-    }
-    It "Should fail to merge inequal strings" {
-      { "joe", "estevez" | Merge-Object -Strategy Fail } `
-      | Should -Throw
-    }
-    It "Should fail to merge inequal values" {
-      { "cat", 42 | Merge-Object -Strategy Fail } `
-      | Should -Throw
-    }
-    It "Should merge equal values" {
-      $merged = "cat", "cat" | Merge-Object -Strategy Fail
-      $merged | Should -Be "cat"
+    It "Should fail to select a non-existent config" {
+      $selector = @("x", "y", "z")
+      $found = Select-Config -Vector $selector -Container $container | % BaseName
+      $found | Should -BeNullOrEmpty
     }
   }
-
+  
 }

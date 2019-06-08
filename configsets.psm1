@@ -1,5 +1,7 @@
 
-using namespace Newtonsoft.Json.Schema
+Import-Module Functional
+
+$ErrorActionPreference = "Stop"
 
 # I like the Windows PowerShell alias
 if (-not (Get-Alias "Sort" -ErrorAction SilentlyContinue)) {
@@ -16,6 +18,7 @@ if (-not (Get-Alias "Sort" -ErrorAction SilentlyContinue)) {
   Call this function in a PR build to ensure your configs in Container are all valid
 #>
 function Assert-HomogenousConfig {
+  [CmdletBinding()]
   Param(
     # Path to the folder containing the configs
     [Parameter(Mandatory)]
@@ -46,6 +49,7 @@ function Assert-HomogenousConfig {
   Call this function in a PR build to ensure your configs in Container are all valid
 #>
 function Assert-ParseableJson {
+  [CmdletBinding()]
   Param(
     # Path to the folder containing the configs
     [Parameter(Mandatory)]
@@ -63,131 +67,35 @@ function Assert-ParseableJson {
 
 <#
 .SYNOPSIS
-  Short description
+  Selects appropriate configs based on the selector
 .DESCRIPTION
-  Long description
-.EXAMPLE
-  PS C:\> <example usage>
-  Explanation of what the example does
-.INPUTS
-  Inputs (if any)
+  Selects all configs that match the selector with wildcards
 .OUTPUTS
-  Output (if any)
-.NOTES
-  General notes
+  The selected config files
 #>
 function Select-Config {
-  [OutputType([object[]])]
+  [CmdletBinding()]
+  [OutputType([System.IO.FileSystemInfo])]
   Param(
     # String identifier for the set
     [Parameter(Mandatory, ParameterSetName = "Id")]
     [ValidatePattern("^[^-]+(-[^-]+)*$")]
     [string] $Id,
-    # 
+    # An array of individual type instances for the set
     [Parameter(Mandatory, ParameterSetName = "Vector")]
     [ValidateCount(1, 255)]
     [string[]] $Vector,
     # Path to the folder containing the configs
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, ParameterSetName = "Id")]
+    [Parameter(Mandatory, ParameterSetName = "Vector")]
     [ValidateScript( { Test-Path $_ -PathType Container } )]
     [string] $Container
   )
   
   if (-not $Id) {
-    $Id = $Vector -join "-" -replace "_", "*"
+    $Id = $Vector -join "-"
   }
 
-  Get-ChildItem $Container | ? { $_.BaseName -like $Id }
+  $globPattern = $Id -replace "_", "*"
+  Get-ChildItem $Container | ? { $_.BaseName -replace "_", "*" -like $globPattern }
 }
-
-enum MergeStrategy {
-  Override
-  Fail
-}
-
-# don't use `-is [PSCustomObject]`
-# https://github.com/PowerShell/PowerShell/issues/9557
-function isPsCustomObject($v) {
-  $v.PSTypeNames -contains 'System.Management.Automation.PSCustomObject'
-}
-
-function merge($a, $b, [scriptblock]$strategy) {
-  if ($null -eq $a) {
-    Write-Debug "new assignment '$b'"
-    return $b
-  }
-  if ($a -eq $b -or $null -eq $b) {
-    Write-Debug "existing assignment '$a'"
-    return $a
-  }
-  if ($a -is [array] -and $b -is [array]) {
-    Write-Debug "merge arrays '$a' '$b'"
-    return $a + $b | Sort -Unique
-  }
-  if ($a -is [hashtable] -and $b -is [hashtable]) {
-    Write-Debug "merge hashtable '$a' '$b'"
-    $merged = @{ }
-    $a.Keys + $b.Keys `
-    | Sort -Unique `
-    | % { $merged[$_] = merge $a[$_] $b[$_] $strategy }
-    return $merged
-  }
-  if ((isPsCustomObject $a) -and (isPsCustomObject $b)) {
-    Write-Debug "a is pscustomobject: $($a -is [psobject])"
-    Write-Debug "merge objects '$a' '$b'"
-    $merged = @{ }
-    $a.psobject.Properties + $b.psobject.Properties `
-    | % Name `
-    | Sort -Unique `
-    | % { $merged[$_] = merge $a.$_ $b.$_ $strategy }
-    return [PSCustomObject]$merged
-  }
-  Write-Debug "resolve conflict '$a' '$b'"
-  return &$strategy $a $b 
-}
-
-$Strategies = @{
-  Override = {
-    Param($a, $b)
-    return $b
-  }
-  Fail     = {
-    Param($a, $b)
-    throw "Cannot merge type '$($a.GetType())' and '$($b.GetType())'"
-  }
-}
-
-<#
-.SYNOPSIS
-  Short description
-.DESCRIPTION
-  Long description
-.EXAMPLE
-  PS C:\> <example usage>
-  Explanation of what the example does
-.INPUTS
-  Inputs (if any)
-.OUTPUTS
-  Output (if any)
-.NOTES
-  General notes
-#>
-function Merge-Object {
-  [OutputType([object])]
-  Param(
-    [Parameter(Mandatory, ValueFromPipeline)]
-    [ValidateNotNullOrEmpty()]
-    [object[]] $Configs,
-    [Parameter(Mandatory)]
-    [ValidateNotNullOrEmpty()]
-    [MergeStrategy] $Strategy
-  )
-  
-  $accum = $input | Select -First 1
-  foreach ($config in $input | Select -Skip 1) {
-    Write-Debug "accum is pscustomobject: $($accum -is [pscustomobject])"
-    $accum = merge $accum $config $Strategies["$Strategy"]
-  }
-  return $accum
-}
-

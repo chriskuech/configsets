@@ -1,7 +1,2 @@
-# configsets
-
-```powershell
-Test-AzResourceGroupDeployment `
-  -TemplateFile ... `
-  -TemplateParameterFile '
-```
+# Config Sets
+Scalably maintain configs across heterogeneous clusters

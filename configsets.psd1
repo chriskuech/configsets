@@ -24,7 +24,7 @@
   Author            = 'kuech'
 
   # Company or vendor of this module
-  CompanyName       = 'Unknown'
+  # CompanyName       = 'Unknown'
 
   # Copyright statement for this module
   Copyright         = '(c) kuech. All rights reserved.'
@@ -72,7 +72,6 @@
   FunctionsToExport = @(
     'Assert-HomogenousConfig',
     'Assert-ParseableJson',
-    'Merge-Object',
     'Select-Config'
   )
 
@@ -80,9 +79,7 @@
   CmdletsToExport   = @()
 
   # Variables to export from this module
-  VariablesToExport = @(
-    'Strategies'
-  )
+  VariablesToExport = @()
 
   # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
   AliasesToExport   = @()
