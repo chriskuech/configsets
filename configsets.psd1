@@ -21,7 +21,7 @@
   GUID              = '326e92ad-cb7f-4360-8072-f3654cf2ed23'
 
   # Author of this module
-  Author            = 'kuech'
+  Author            = 'chriskuech'
 
   # Company or vendor of this module
   # CompanyName       = 'Unknown'
@@ -30,7 +30,7 @@
   Copyright         = '(c) kuech. All rights reserved.'
 
   # Description of the functionality provided by this module
-  # Description = ''
+  Description       = 'Scalably maintain configs across heterogeneous clusters'
 
   # Minimum version of the PowerShell engine required by this module
   # PowerShellVersion = ''
